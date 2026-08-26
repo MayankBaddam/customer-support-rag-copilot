@@ -57,6 +57,36 @@ a { color: inherit; text-decoration: none; }
 .placeholder-panel { padding: 30px; }
 .placeholder-panel h2 { margin: 0; font-size: 26px; font-weight: 400; }
 .placeholder-panel p { margin: 10px 0 0; color: var(--muted); font: 14px/1.5 Arial, sans-serif; }
+.ticket-toolbar { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.search-input, .filter-field select, .ticket-form input, .ticket-form textarea, .message-composer textarea { width: 100%; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 11px 12px; outline: 0; font: 13px/1.3 Arial, sans-serif; }
+.search-input { flex: 1 1 260px; min-height: 40px; }
+.search-input:focus, .ticket-form input:focus, .ticket-form textarea:focus, .message-composer textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); }
+.filter-field { display: grid; gap: 6px; min-width: 132px; color: var(--muted); font: 10px/1 Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.filter-field select { min-height: 40px; text-transform: none; letter-spacing: 0; }
+.primary-button, .secondary-button { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 15px; border: 1px solid transparent; cursor: pointer; font: 700 12px/1 Arial, sans-serif; white-space: nowrap; }
+.primary-button { background: var(--teal); color: white; }
+.primary-button:hover { background: #0e6965; }
+.secondary-button { background: var(--surface); border-color: var(--line); color: var(--ink); }
+.secondary-button:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); }
+.secondary-button:disabled { cursor: not-allowed; opacity: .45; }
+.ticket-table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); }
+.ticket-table { width: 100%; border-collapse: collapse; min-width: 760px; text-align: left; font: 12px/1.3 Arial, sans-serif; }
+.ticket-table th { padding: 13px 16px; color: var(--muted); background: #f8fafb; border-bottom: 1px solid var(--line); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+.ticket-table td { padding: 15px 16px; border-bottom: 1px solid #edf1f2; color: var(--muted); }
+.ticket-table tr:last-child td { border-bottom: 0; }
+.ticket-table td strong { display: block; color: var(--ink); font-weight: 700; }
+.ticket-table td span { display: block; margin-top: 4px; font-size: 11px; }
+.ticket-link { color: var(--teal); }
+.ticket-link span { color: var(--ink); max-width: 250px; }
+.ticket-badge { display: inline-block; padding: 5px 8px; border-radius: 999px; font: 700 10px/1 Arial, sans-serif; white-space: nowrap; }
+.badge-open { color: #176d69; background: #dff2ef; }.badge-in_progress { color: #325c8b; background: #e3edf8; }.badge-waiting { color: #8b6423; background: #fff1d1; }.badge-resolved { color: #5f6870; background: #e9edef; }
+.priority-low { color: #5f6870; background: #edf1f2; }.priority-medium { color: #8b6423; background: #fff1d1; }.priority-high { color: #a24843; background: #fbe5e2; }.priority-urgent { color: #fff; background: #a8433e; }
+.ticket-cards { display: none; }
+.pagination { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-top: 18px; color: var(--muted); font: 12px/1 Arial, sans-serif; }
+.ticket-state { padding: 54px 24px; background: var(--surface); border: 1px solid var(--line); text-align: center; }.ticket-state h2 { margin: 0; font-size: 25px; font-weight: 400; }.ticket-state p { margin: 10px 0 20px; color: var(--muted); font: 14px/1.5 Arial, sans-serif; }
+.ticket-skeleton { display: grid; gap: 10px; }.ticket-skeleton div { height: 70px; background: linear-gradient(90deg, #e9eff0 25%, #f7f9f9 50%, #e9eff0 75%); background-size: 200% 100%; animation: pulse 1.4s infinite; }.ticket-form { display: grid; gap: 20px; max-width: 900px; padding: 28px; background: var(--surface); border: 1px solid var(--line); }.form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }.ticket-form label { display: grid; gap: 7px; color: var(--ink); font: 700 11px/1.2 Arial, sans-serif; }.ticket-form .filter-field { font-weight: 400; }.ticket-form textarea, .message-composer textarea { resize: vertical; }.form-error { margin: 0; padding: 11px 12px; color: #8e302d; background: #fce9e7; font: 12px/1.4 Arial, sans-serif; }
+.back-link { display: inline-block; margin-bottom: 25px; color: var(--teal); font: 700 12px/1 Arial, sans-serif; }.detail-header { display: flex; justify-content: space-between; gap: 24px; align-items: start; }.detail-title { max-width: 760px; margin: 0; font-size: clamp(30px, 4vw, 48px); line-height: 1.05; font-weight: 400; }.detail-customer { color: var(--muted); font: 14px/1.5 Arial, sans-serif; }.detail-badges { display: flex; gap: 8px; padding-top: 10px; }.detail-meta { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; margin: 30px 0 16px; background: var(--line); border: 1px solid var(--line); }.detail-meta > div, .detail-meta > label { display: grid; gap: 7px; min-height: 85px; padding: 16px; background: var(--surface); }.detail-meta span { color: var(--muted); font: 10px/1 Arial, sans-serif; letter-spacing: .1em; text-transform: uppercase; }.detail-meta strong, .detail-meta select { color: var(--ink); font: 700 13px/1.2 Arial, sans-serif; }.detail-meta select { border: 0; padding: 0; background: transparent; outline: 0; }.conversation-panel { padding: 28px; background: var(--surface); border: 1px solid var(--line); }.section-heading { display: flex; justify-content: space-between; align-items: start; border-bottom: 1px solid var(--line); padding-bottom: 18px; }.section-heading h2 { margin: 0; font-size: 25px; font-weight: 400; }.section-heading > span { color: var(--muted); font: 11px/1 Arial, sans-serif; }.timeline { display: grid; gap: 12px; padding: 22px 0; }.message { padding: 16px; border-left: 3px solid var(--line); background: #f8fafb; }.message-agent { border-left-color: var(--teal); }.message-customer { border-left-color: var(--amber); }.message-top { display: flex; justify-content: space-between; gap: 14px; color: var(--ink); font: 700 12px/1.2 Arial, sans-serif; }.message time { color: var(--muted); font: 11px/1.2 Arial, sans-serif; }.message p { margin: 10px 0 0; white-space: pre-wrap; color: var(--muted); font: 14px/1.5 Arial, sans-serif; }.conversation-empty { padding: 30px 0; color: var(--muted); font: 14px/1.5 Arial, sans-serif; }.message-composer { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 20px; }.message-composer .primary-button, .ticket-form .primary-button { justify-self: start; }
+@keyframes pulse { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .auth-page { display: grid; min-height: 100vh; place-items: center; padding: 32px 20px; background: radial-gradient(circle at 20% 20%, #dff2ef 0, transparent 28%), var(--canvas); }
 .auth-card { width: min(100%, 460px); padding: 42px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 20px 60px rgb(30 52 65 / 8%); }
 .auth-heading { text-align: center; }
@@ -96,4 +126,5 @@ a { color: inherit; text-decoration: none; }
 	.welcome-panel { align-items: flex-start; padding: 24px; }
 	.welcome-mark { font-size: 30px; }
 	.auth-card { padding: 30px 22px; }
+	.ticket-table-wrap { display: none; }.ticket-cards { display: grid; gap: 10px; }.ticket-card { padding: 18px; background: var(--surface); border: 1px solid var(--line); }.ticket-card > div { display: flex; justify-content: space-between; gap: 8px; color: var(--teal); font: 700 12px/1 Arial, sans-serif; }.ticket-card h3 { margin: 14px 0 7px; font-size: 18px; font-weight: 400; }.ticket-card p { margin: 0 0 14px; color: var(--muted); font: 12px/1.3 Arial, sans-serif; }.form-grid { grid-template-columns: 1fr; }.ticket-form, .conversation-panel { padding: 22px; }.detail-header { display: block; }.detail-badges { padding-top: 16px; }.detail-meta { grid-template-columns: repeat(2, 1fr); }.detail-meta > div:last-child { grid-column: 1 / -1; }.message-top { display: block; }.message time { display: block; margin-top: 6px; }.pagination { justify-content: space-between; }
 }
