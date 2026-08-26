@@ -12,3 +12,9 @@ export interface ApiError {
     request_id?: string;
   };
 }
+
+export interface ProfileResponse {
+  id: string;
+  full_name: string;
+  role: "agent" | "admin";
+}

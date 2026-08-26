@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     migration_database_url: str | None = Field(
         default=None, validation_alias="MIGRATION_DATABASE_URL"
     )
+    supabase_url: str | None = Field(default=None, validation_alias="SUPABASE_URL")
+    supabase_anon_key: str | None = Field(default=None, validation_alias="SUPABASE_ANON_KEY")
 
     model_config = SettingsConfigDict(
         env_file=BACKEND_ROOT / ".env",
