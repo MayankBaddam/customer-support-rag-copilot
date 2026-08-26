@@ -668,7 +668,9 @@ ENVIRONMENT=development
 DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:6543/postgres
 MIGRATION_DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:5432/postgres
 SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+SUPABASE_ANON_KEY=replace_me
 SUPABASE_SERVICE_ROLE_KEY=replace_me
+SEED_DEMO_USER_ID=replace_with_supabase_auth_user_uuid
 SUPABASE_STORAGE_BUCKET=knowledge-documents
 JWT_SECRET=replace_with_a_long_random_value
 GEMINI_API_KEY=replace_me
@@ -707,6 +709,13 @@ Windows PowerShell:
 pip install -e ".[dev]"
 alembic upgrade head
 uvicorn app.main:app --reload
+```
+
+To explicitly seed the fictional CloudDesk demo data, create a Supabase Auth
+user, set its UUID as `SEED_DEMO_USER_ID` in `backend/.env`, and run:
+
+```powershell
+python -m app.seed
 ```
 
 macOS or Linux:

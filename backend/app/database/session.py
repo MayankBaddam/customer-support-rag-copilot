@@ -9,7 +9,11 @@ from app.core.config import get_settings
 
 @lru_cache
 def get_engine(database_url: str) -> Engine:
-    return create_engine(database_url, pool_pre_ping=True)
+    return create_engine(
+        database_url,
+        pool_pre_ping=True,
+        connect_args={"prepare_threshold": None} if database_url.startswith("postgresql+psycopg") else {},
+    )
 
 
 def get_database_engine() -> Engine:
