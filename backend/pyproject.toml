@@ -9,6 +9,7 @@ description = "FastAPI backend for the Customer Support RAG Copilot"
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.14,<2.0",
+    "email-validator>=2.2,<3.0",
     "fastapi>=0.115,<1.0",
     "pydantic-settings>=2.6,<3.0",
     "psycopg[binary]>=3.2,<4.0",
