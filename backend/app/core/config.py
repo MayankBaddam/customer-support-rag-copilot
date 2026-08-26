@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     )
     supabase_url: str | None = Field(default=None, validation_alias="SUPABASE_URL")
     supabase_anon_key: str | None = Field(default=None, validation_alias="SUPABASE_ANON_KEY")
+    seed_demo_user_id: str | None = Field(default=None, validation_alias="SEED_DEMO_USER_ID")
 
     model_config = SettingsConfigDict(
         env_file=BACKEND_ROOT / ".env",
