@@ -1,0 +1,22 @@
+[
+  {"id":"TCK-1001","category":"Billing","priority":"high","status":"open","subject":"Possible duplicate renewal charge","description":"A workspace owner reports two charges for the same renewal period and asks what will happen next."},
+  {"id":"TCK-1002","category":"Billing","priority":"medium","status":"open","subject":"Refund request after recent purchase","description":"A customer asks whether a subscription purchased 12 days ago is eligible for review."},
+  {"id":"TCK-1003","category":"Billing","priority":"low","status":"pending","subject":"Billing history question","description":"A workspace owner wants help locating the date and plan name for a charge."},
+  {"id":"TCK-1004","category":"Account access","priority":"high","status":"open","subject":"Password reset message expired","description":"A customer says the recovery message is older than 30 minutes and can no longer be used."},
+  {"id":"TCK-1005","category":"Account access","priority":"high","status":"open","subject":"Lost access to recovery address","description":"A customer cannot access the verified recovery address and requests an address change."},
+  {"id":"TCK-1006","category":"Account access","priority":"medium","status":"pending","subject":"Multi-factor device replaced","description":"A customer has no recovery code after replacing a multi-factor device."},
+  {"id":"TCK-1007","category":"Subscription","priority":"medium","status":"open","subject":"Request to upgrade workspace","description":"A workspace owner wants to move from Starter to Team during the current billing period."},
+  {"id":"TCK-1008","category":"Subscription","priority":"low","status":"open","subject":"Downgrade timing","description":"A workspace owner asks when a downgrade will take effect and what should be adjusted first."},
+  {"id":"TCK-1009","category":"Subscription","priority":"medium","status":"pending","subject":"Cancellation and continued access","description":"A customer cancelled renewal and asks whether access ends immediately."},
+  {"id":"TCK-1010","category":"Integrations","priority":"high","status":"open","subject":"Integration shows AUTH-401","description":"A connected service stopped syncing after authorization was revoked."},
+  {"id":"TCK-1011","category":"Integrations","priority":"medium","status":"open","subject":"Repeated RATE-429 errors","description":"A workspace sees rate-limit errors during a large synchronization operation."},
+  {"id":"TCK-1012","category":"Integrations","priority":"medium","status":"pending","subject":"Provider timeout","description":"A connector returns SYNC-504 for one operation and then succeeds on retry."},
+  {"id":"TCK-1013","category":"Security","priority":"critical","status":"open","subject":"Unfamiliar sign-in reported","description":"A customer reports a sign-in they do not recognize and asks what to do next."},
+  {"id":"TCK-1014","category":"Security","priority":"high","status":"open","subject":"Request to disable verification","description":"A customer asks support to bypass an integration security check temporarily."},
+  {"id":"TCK-1015","category":"Security","priority":"medium","status":"pending","subject":"Audit event retention question","description":"A workspace owner asks how long security and administrative audit events remain available."},
+  {"id":"TCK-1016","category":"Technical troubleshooting","priority":"medium","status":"open","subject":"Search results are slow","description":"A support agent reports that workspace search takes longer than usual for a small query."},
+  {"id":"TCK-1017","category":"Technical troubleshooting","priority":"low","status":"open","subject":"Dashboard does not refresh","description":"A user sees older ticket information after returning to the dashboard."},
+  {"id":"TCK-1018","category":"Technical troubleshooting","priority":"high","status":"pending","subject":"Workspace access after cancellation","description":"A customer cancelled renewal and wants to confirm the paid-period access behavior."},
+  {"id":"TCK-1019","category":"Billing","priority":"medium","status":"open","subject":"Refund request outside standard window","description":"A customer asks about a refund 45 days after an initial purchase."},
+  {"id":"TCK-1020","category":"Account access","priority":"low","status":"closed","subject":"Review active sessions","description":"A customer completed recovery and asks how to review sessions after a suspicious sign-in."}
+]
