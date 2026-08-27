@@ -23,12 +23,7 @@ export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
 }
 
 export async function getCurrentProfile(accessToken: string): Promise<import("@/types/api").ProfileResponse> {
-  const response = await fetch(`${apiUrl}/api/v1/auth/me`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    cache: "no-store",
-  });
-  if (!response.ok) throw new ApiClientError("The authenticated profile could not be loaded.", response.status);
-  return (await response.json()) as import("@/types/api").ProfileResponse;
+  return request<import("@/types/api").ProfileResponse>("/api/v1/auth/me", accessToken);
 }
 
 async function request<T>(path: string, token: string, options?: RequestInit): Promise<T> {

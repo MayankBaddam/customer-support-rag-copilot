@@ -5,7 +5,7 @@ from app.api.v1.router import api_router
 from app.api.v1.system import root_router
 from app.core.config import Settings, get_settings
 from app.core.errors import register_exception_handlers
-from app.core.logging import configure_logging
+from app.core.logging import configure_logging, register_request_logging
 from app.services.readiness import check_readiness
 
 settings = get_settings()
@@ -27,6 +27,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
     )
     application.state.readiness_check = check_readiness
+    register_request_logging(application)
     register_exception_handlers(application)
     application.include_router(api_router)
     application.include_router(root_router)

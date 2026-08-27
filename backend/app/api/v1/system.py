@@ -1,8 +1,8 @@
 from collections.abc import Awaitable, Callable
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
 
+from app.core.errors import APIError
 from app.schemas.health import HealthResponse, ReadinessResponse
 
 root_router = APIRouter(tags=["system"])
@@ -18,17 +18,13 @@ async def health() -> HealthResponse:
 
 @root_router.get("/ready", response_model=ReadinessResponse)
 @api_router.get("/ready", response_model=ReadinessResponse)
-async def readiness(request: Request) -> ReadinessResponse | JSONResponse:
+async def readiness(request: Request) -> ReadinessResponse:
     try:
         checks = await request.app.state.readiness_check()
     except Exception:
-        return JSONResponse(
-            status_code=503,
-            content={
-                "error": {
-                    "code": "DEPENDENCY_UNAVAILABLE",
-                    "message": "A required dependency is unavailable.",
-                }
-            },
+        raise APIError(
+            "DEPENDENCY_UNAVAILABLE",
+            "A required dependency is unavailable.",
+            503,
         )
     return ReadinessResponse(status="ready", checks=checks)

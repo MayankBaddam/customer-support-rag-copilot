@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
+import { ApiErrorState } from "@/components/errors/api-error-state";
 import { useGroundedAnswer } from "@/hooks/use-grounded-answer";
-import { ApiClientError } from "@/lib/api-client";
 
 const topKOptions = Array.from({ length: 10 }, (_, index) => index + 1);
 
@@ -22,8 +21,6 @@ export function CopilotChat() {
       // React Query exposes the safe error state below.
     }
   };
-
-  const unauthorized = answer.error instanceof ApiClientError && answer.error.status === 401;
 
   return <div className="copilot-workspace">
     <div className="retrieval-heading">
@@ -56,11 +53,7 @@ export function CopilotChat() {
     </form>
 
     {answer.isPending && <div className="retrieval-state" role="status"><h2>Finding grounded evidence</h2><p>Searching your uploaded documents and preparing a supported answer.</p></div>}
-    {answer.isError && <div className="retrieval-state retrieval-error" role="alert">
-      <h2>{unauthorized ? "Your session has expired" : "Copilot could not answer"}</h2>
-      <p>{unauthorized ? "Sign in again to ask questions about your private knowledge base." : "The request could not be completed. Please try again."}</p>
-      {unauthorized && <Link className="secondary-button" href="/login">Return to sign in</Link>}
-    </div>}
+    {answer.isError && <ApiErrorState error={answer.error} fallbackTitle="Copilot could not answer" fallbackMessage="The request could not be completed. Please try again." />}
     {answer.isSuccess && <section className="copilot-response" aria-label="Copilot answer">
       <article className="copilot-answer-card">
         <div className="copilot-answer-heading"><p className="eyebrow">Grounded answer</p><span>{answer.data.retrieved_chunks} chunk{answer.data.retrieved_chunks === 1 ? "" : "s"} retrieved</span></div>
