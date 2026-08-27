@@ -29,6 +29,38 @@ class Settings(BaseSettings):
         default=5_242_880,
         validation_alias="MAX_DOCUMENT_SIZE_BYTES",
     )
+    gemini_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias="GEMINI_API_KEY",
+        exclude=True,
+    )
+    embedding_model: str = Field(
+        default="gemini-embedding-001",
+        validation_alias="EMBEDDING_MODEL",
+    )
+    embedding_dimension: int = Field(default=768, gt=0, validation_alias="EMBEDDING_DIMENSION")
+    embedding_batch_size: int = Field(default=16, gt=0, validation_alias="EMBEDDING_BATCH_SIZE")
+    embedding_api_timeout_seconds: float = Field(
+        default=30.0,
+        gt=0,
+        validation_alias="EMBEDDING_API_TIMEOUT_SECONDS",
+    )
+    embedding_max_retries: int = Field(default=2, ge=0, le=5, validation_alias="EMBEDDING_MAX_RETRIES")
+    embedding_retry_backoff_seconds: float = Field(
+        default=0.5,
+        ge=0,
+        validation_alias="EMBEDDING_RETRY_BACKOFF_SECONDS",
+    )
+    embedding_retry_max_backoff_seconds: float = Field(
+        default=4.0,
+        ge=0,
+        validation_alias="EMBEDDING_RETRY_MAX_BACKOFF_SECONDS",
+    )
+    answer_model: str = Field(default="gemini-2.5-flash", validation_alias="ANSWER_MODEL")
+    answer_api_timeout_seconds: float = Field(default=30.0, gt=0, validation_alias="ANSWER_API_TIMEOUT_SECONDS")
+    answer_max_retries: int = Field(default=2, ge=0, le=5, validation_alias="ANSWER_MAX_RETRIES")
+    answer_retry_backoff_seconds: float = Field(default=0.5, ge=0, validation_alias="ANSWER_RETRY_BACKOFF_SECONDS")
+    answer_retry_max_backoff_seconds: float = Field(default=4.0, ge=0, validation_alias="ANSWER_RETRY_MAX_BACKOFF_SECONDS")
     seed_demo_user_id: str | None = Field(default=None, validation_alias="SEED_DEMO_USER_ID")
 
     model_config = SettingsConfigDict(

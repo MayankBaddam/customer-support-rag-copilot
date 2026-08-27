@@ -19,10 +19,13 @@ from app.models import Document, DocumentChunk, DocumentFileType, DocumentStatus
 from app.schemas.documents import (
     DocumentChunkListResponse,
     DocumentChunkResponse,
+    DocumentEmbeddingResponse,
     DocumentListResponse,
     DocumentResponse,
 )
 from app.services.ingestion import ingest_document
+from app.services.embedding_generation import EmbeddingGenerationService, get_embedding_provider
+from app.services.embeddings import EmbeddingProvider
 from app.services.storage import SupabaseStorageAdapter, get_storage_adapter
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -265,6 +268,33 @@ def get_document(
     session: Annotated[Session, Depends(get_db)],
 ) -> DocumentResponse:
     return DocumentResponse.model_validate(_owned_document(session, document_id, profile))
+
+
+@router.post("/{document_id}/embed", response_model=DocumentEmbeddingResponse)
+def embed_document_chunks(
+    document_id: UUID,
+    profile: Annotated[Profile, Depends(get_current_profile)],
+    session: Annotated[Session, Depends(get_db)],
+    provider: Annotated[EmbeddingProvider, Depends(get_embedding_provider)],
+    force: bool = False,
+    batch_size: Annotated[int | None, Query(ge=1, le=100)] = None,
+    limit: Annotated[int | None, Query(ge=1)] = None,
+) -> DocumentEmbeddingResponse:
+    document = _owned_document(session, document_id, profile)
+    if document.status != DocumentStatus.COMPLETED:
+        raise APIError("DOCUMENT_NOT_COMPLETED", "Only completed documents can be embedded.", 409)
+    result = EmbeddingGenerationService(session, provider).run(
+        document_id=document.id,
+        batch_size=batch_size,
+        force=force,
+        limit=limit,
+    )
+    return DocumentEmbeddingResponse(
+        processed=result.processed,
+        skipped=result.skipped,
+        failed=result.failed,
+        status=result.status,
+    )
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)

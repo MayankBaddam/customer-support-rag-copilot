@@ -14,6 +14,18 @@ from app.models import Base, Document, DocumentChunk, DocumentStatus, Profile, P
 from app.services.storage import SupabaseStorageAdapter
 
 
+class MockEmbeddingProvider:
+    def __init__(self):
+        self.calls = []
+
+    def embed_texts(self, texts):
+        self.calls.append(list(texts))
+        return [[0.25] * 768 for _ in texts]
+
+    def embed_query(self, _text):
+        raise AssertionError("query embedding is outside this task")
+
+
 class MockStorage(SupabaseStorageAdapter):
     def __init__(self, *, fail_upload=False, fail_download=False, fail_delete=False):
         self.fail_upload = fail_upload
@@ -416,3 +428,60 @@ def test_document_management_requires_owner(document_api_client):
         assert client.delete(f"/api/v1/documents/{document_id}").status_code == 404
     finally:
         app.dependency_overrides.pop(get_current_profile, None)
+
+
+def test_document_embedding_endpoint_processes_completed_owner_document(document_api_client):
+    client, _, _, session_factory = document_api_client
+    document_id = _upload_text(client).json()["id"]
+    assert client.post(f"/api/v1/documents/{document_id}/process").status_code == 200
+    provider = MockEmbeddingProvider()
+    from app.api.v1.documents import get_embedding_provider
+
+    app.dependency_overrides[get_embedding_provider] = lambda: provider
+    response = client.post(f"/api/v1/documents/{document_id}/embed")
+
+    assert response.status_code == 200
+    assert response.json() == {"processed": 1, "skipped": 0, "failed": 0, "status": "completed"}
+    assert len(provider.calls) == 1
+    assert "embedding" not in response.text
+    with session_factory() as session:
+        chunk = session.query(DocumentChunk).filter_by(document_id=UUID(document_id)).one()
+        assert len(chunk.embedding) == 768
+
+
+def test_document_embedding_endpoint_requires_owner(document_api_client):
+    client, profile, _, _ = document_api_client
+    document_id = _upload_text(client).json()["id"]
+    assert client.post(f"/api/v1/documents/{document_id}/process").status_code == 200
+    provider = MockEmbeddingProvider()
+    other = Profile(id=uuid4(), full_name="Other", role=ProfileRole.AGENT)
+    from app.api.v1.documents import get_embedding_provider
+
+    app.dependency_overrides[get_embedding_provider] = lambda: provider
+    app.dependency_overrides[get_current_profile] = lambda: other
+    try:
+        response = client.post(f"/api/v1/documents/{document_id}/embed")
+    finally:
+        app.dependency_overrides[get_current_profile] = lambda: profile
+
+    assert response.status_code == 404
+    assert provider.calls == []
+
+
+@pytest.mark.parametrize("document_status", [DocumentStatus.PENDING, DocumentStatus.ARCHIVED])
+def test_document_embedding_endpoint_rejects_non_completed_documents(document_api_client, document_status):
+    client, _, _, session_factory = document_api_client
+    document_id = _upload_text(client).json()["id"]
+    with session_factory() as session:
+        document = session.get(Document, UUID(document_id))
+        document.status = document_status
+        session.commit()
+    provider = MockEmbeddingProvider()
+    from app.api.v1.documents import get_embedding_provider
+
+    app.dependency_overrides[get_embedding_provider] = lambda: provider
+    response = client.post(f"/api/v1/documents/{document_id}/embed")
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "DOCUMENT_NOT_COMPLETED"
+    assert provider.calls == []

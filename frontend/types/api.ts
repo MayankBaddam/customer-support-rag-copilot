@@ -105,3 +105,29 @@ export interface DocumentChunkListResponse {
   page_size: number;
   total: number;
 }
+
+export interface SemanticSearchRequest {
+  query: string;
+  top_k: number;
+}
+
+export interface SemanticSearchResult {
+  chunk_id: string;
+  document_id: string;
+  document_title: string;
+  original_filename?: string;
+  section_title: string | null;
+  page_number: number | null;
+  content: string;
+  similarity_score: number;
+}
+
+export interface SemanticSearchResponse {
+  request_id: string;
+  query: string;
+  results: SemanticSearchResult[];
+  result_count: number;
+  retrieval_latency_ms?: number;
+  embedding_model: string;
+  evidence_status: "found" | "no_evidence";
+}

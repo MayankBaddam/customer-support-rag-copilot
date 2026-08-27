@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from pgvector.sqlalchemy import Vector
 
 from app.models.base import Base, TimestampMixin
 from app.models.enums import DocumentFileType, DocumentStatus, enum_values
@@ -87,6 +88,7 @@ class DocumentChunk(Base):
     section_title: Mapped[str | None] = mapped_column(String(240), nullable=True)
     page_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     token_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
     chunk_metadata: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

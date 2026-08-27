@@ -1,4 +1,4 @@
-import type { ApiError, CustomerPlan, DocumentChunkListResponse, DocumentFileType, DocumentListResponse, DocumentStatus, HealthResponse, KnowledgeDocument, Message, MessageCreate, TicketCategory, TicketDetail, TicketListResponse, TicketPriority, TicketStatus } from "@/types/api";
+import type { ApiError, CustomerPlan, DocumentChunkListResponse, DocumentFileType, DocumentListResponse, DocumentStatus, HealthResponse, KnowledgeDocument, Message, MessageCreate, SemanticSearchRequest, SemanticSearchResponse, TicketCategory, TicketDetail, TicketListResponse, TicketPriority, TicketStatus } from "@/types/api";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -86,3 +86,22 @@ export function uploadDocument(token: string, title: string, file: File) { const
 export function processDocument(token: string, id: string) { return request<KnowledgeDocument>(`/api/v1/documents/${id}/process`, token, { method: "POST" }); }
 export function reprocessDocument(token: string, id: string) { return request<KnowledgeDocument>(`/api/v1/documents/${id}/reprocess`, token, { method: "POST" }); }
 export function deleteDocument(token: string, id: string) { return request<void>(`/api/v1/documents/${id}`, token, { method: "DELETE" }); }
+
+export async function searchKnowledgeChunks(token: string, payload: SemanticSearchRequest): Promise<SemanticSearchResponse> {
+  const startedAt = performance.now();
+  const response = await request<SemanticSearchResponse>("/api/v1/copilot/search", token, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  const documentIds = [...new Set(response.results.map((result) => result.document_id))];
+  const documents = await Promise.all(documentIds.map((documentId) => getDocument(token, documentId)));
+  const filenames = new Map(documents.map((document) => [document.id, document.original_filename]));
+  return {
+    ...response,
+    retrieval_latency_ms: response.retrieval_latency_ms ?? Math.max(0, performance.now() - startedAt),
+    results: response.results.map((result) => ({
+      ...result,
+      original_filename: filenames.get(result.document_id),
+    })),
+  };
+}
