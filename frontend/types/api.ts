@@ -131,3 +131,18 @@ export interface SemanticSearchResponse {
   embedding_model: string;
   evidence_status: "found" | "no_evidence";
 }
+
+export interface GroundedAnswerCitation {
+  chunk_id: string;
+  document_title: string;
+  original_filename: string;
+  section_title: string | null;
+  page_number: number | null;
+  similarity_score: number;
+}
+
+export interface GroundedAnswerResponse {
+  answer: string;
+  citations: GroundedAnswerCitation[];
+  retrieved_chunks: number;
+}

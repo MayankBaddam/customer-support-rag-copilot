@@ -1,4 +1,4 @@
-import type { ApiError, CustomerPlan, DocumentChunkListResponse, DocumentFileType, DocumentListResponse, DocumentStatus, HealthResponse, KnowledgeDocument, Message, MessageCreate, SemanticSearchRequest, SemanticSearchResponse, TicketCategory, TicketDetail, TicketListResponse, TicketPriority, TicketStatus } from "@/types/api";
+import type { ApiError, CustomerPlan, DocumentChunkListResponse, DocumentFileType, DocumentListResponse, DocumentStatus, GroundedAnswerResponse, HealthResponse, KnowledgeDocument, Message, MessageCreate, SemanticSearchRequest, SemanticSearchResponse, TicketCategory, TicketDetail, TicketListResponse, TicketPriority, TicketStatus } from "@/types/api";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -104,4 +104,11 @@ export async function searchKnowledgeChunks(token: string, payload: SemanticSear
       original_filename: filenames.get(result.document_id),
     })),
   };
+}
+
+export function generateGroundedAnswer(token: string, payload: SemanticSearchRequest) {
+  return request<GroundedAnswerResponse>("/api/v1/copilot/answer", token, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }

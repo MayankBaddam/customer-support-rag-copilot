@@ -4,8 +4,9 @@ const links = [
   { href: "/", label: "Dashboard", icon: "01" },
   { href: "/tickets", label: "Tickets", icon: "02" },
   { href: "/knowledge-base", label: "Knowledge Base", icon: "03" },
-  { href: "/retrieval-debug", label: "Retrieval Debug", icon: "04" },
-  { href: "/evaluation", label: "Evaluation", icon: "05" },
+  { href: "/copilot", label: "Copilot", icon: "04" },
+  { href: "/retrieval-debug", label: "Retrieval Debug", icon: "05" },
+  { href: "/evaluation", label: "Evaluation", icon: "06" },
 ];
 
 export function Sidebar({ pathname }: { pathname: string }) {
