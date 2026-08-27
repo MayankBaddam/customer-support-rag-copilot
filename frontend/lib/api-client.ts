@@ -1,4 +1,4 @@
-import type { CustomerPlan, HealthResponse, Message, MessageCreate, TicketCategory, TicketDetail, TicketListResponse, TicketPriority, TicketStatus } from "@/types/api";
+import type { ApiError, CustomerPlan, DocumentChunkListResponse, DocumentFileType, DocumentListResponse, DocumentStatus, HealthResponse, KnowledgeDocument, Message, MessageCreate, TicketCategory, TicketDetail, TicketListResponse, TicketPriority, TicketStatus } from "@/types/api";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -32,8 +32,27 @@ export async function getCurrentProfile(accessToken: string): Promise<import("@/
 }
 
 async function request<T>(path: string, token: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${apiUrl}${path}`, { ...options, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...options?.headers }, cache: "no-store" });
-  if (!response.ok) throw new ApiClientError("The ticket request could not be completed.", response.status);
+  const isFormData = options?.body instanceof FormData;
+  const headers = new Headers(options?.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  if (options?.body && !isFormData) headers.set("Content-Type", "application/json");
+  let response: Response;
+  try {
+    response = await fetch(`${apiUrl}${path}`, { ...options, headers, cache: "no-store" });
+  } catch {
+    throw new ApiClientError("The backend could not be reached.");
+  }
+  if (!response.ok) {
+    let message = "The request could not be completed.";
+    try {
+      const payload = (await response.json()) as Partial<ApiError>;
+      if (payload.error?.message) message = payload.error.message;
+    } catch {
+      // Keep the safe generic message when the backend response is not JSON.
+    }
+    throw new ApiClientError(message, response.status);
+  }
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
@@ -52,3 +71,18 @@ export function getTicket(token: string, id: string) { return request<TicketDeta
 export function updateTicket(token: string, id: string, data: Partial<Pick<TicketDetail, "subject" | "status" | "priority" | "category" | "customer_plan" | "assigned_to">>) { return request<TicketDetail>(`/api/v1/tickets/${id}`, token, { method: "PATCH", body: JSON.stringify(data) }); }
 export function addTicketMessage(token: string, id: string, data: MessageCreate) { return request<Message>(`/api/v1/tickets/${id}/messages`, token, { method: "POST", body: JSON.stringify(data) }); }
 export function createTicket(token: string, data: { subject: string; customer_name: string; customer_email: string; customer_plan: CustomerPlan; category: TicketCategory; priority: TicketPriority; first_message?: MessageCreate }) { return request<TicketDetail>("/api/v1/tickets", token, { method: "POST", body: JSON.stringify(data) }); }
+
+export interface DocumentFilters { page: number; pageSize: number; search?: string; status?: DocumentStatus; fileType?: DocumentFileType; }
+export function getDocuments(token: string, filters: DocumentFilters) {
+  const params = new URLSearchParams({ page: String(filters.page), page_size: String(filters.pageSize) });
+  if (filters.search) params.set("search", filters.search);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.fileType) params.set("file_type", filters.fileType);
+  return request<DocumentListResponse>(`/api/v1/documents?${params}`, token);
+}
+export function getDocument(token: string, id: string) { return request<KnowledgeDocument>(`/api/v1/documents/${id}`, token); }
+export function getDocumentChunks(token: string, id: string, page: number, pageSize = 10) { return request<DocumentChunkListResponse>(`/api/v1/documents/${id}/chunks?page=${page}&page_size=${pageSize}`, token); }
+export function uploadDocument(token: string, title: string, file: File) { const body = new FormData(); body.set("title", title); body.set("file", file); return request<KnowledgeDocument>("/api/v1/documents", token, { method: "POST", body }); }
+export function processDocument(token: string, id: string) { return request<KnowledgeDocument>(`/api/v1/documents/${id}/process`, token, { method: "POST" }); }
+export function reprocessDocument(token: string, id: string) { return request<KnowledgeDocument>(`/api/v1/documents/${id}/reprocess`, token, { method: "POST" }); }
+export function deleteDocument(token: string, id: string) { return request<void>(`/api/v1/documents/${id}`, token, { method: "DELETE" }); }

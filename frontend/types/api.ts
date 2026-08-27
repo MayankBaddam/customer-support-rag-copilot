@@ -58,3 +58,50 @@ export interface Ticket {
 
 export interface TicketDetail extends Ticket { conversations: Conversation[]; }
 export interface TicketListResponse { total: number; page: number; page_size: number; items: Ticket[]; }
+
+export type DocumentStatus = "pending" | "processing" | "completed" | "failed" | "archived";
+export type DocumentFileType = "pdf" | "markdown" | "text";
+
+export interface KnowledgeDocument {
+  id: string;
+  title: string;
+  original_filename: string;
+  storage_bucket: string;
+  file_type: DocumentFileType;
+  mime_type: string;
+  file_size_bytes: number;
+  checksum_sha256: string;
+  status: DocumentStatus;
+  version: number;
+  chunk_count: number;
+  uploaded_by: string | null;
+  created_at: string;
+  updated_at: string;
+  processed_at: string | null;
+}
+
+export interface DocumentListResponse {
+  items: KnowledgeDocument[];
+  page: number;
+  page_size: number;
+  total: number;
+}
+
+export interface DocumentChunk {
+  id: string;
+  document_id: string;
+  chunk_index: number;
+  content: string;
+  section_title: string | null;
+  page_number: number | null;
+  token_count: number;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface DocumentChunkListResponse {
+  items: DocumentChunk[];
+  page: number;
+  page_size: number;
+  total: number;
+}

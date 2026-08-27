@@ -1,5 +1,6 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { AppShell } from "@/components/layout/app-shell";
+import { DocumentList } from "@/components/documents/document-list";
 
 export default function KnowledgeBasePage() {
-  return <PlaceholderPage eyebrow="Approved sources" title="Knowledge Base" description="A dependable home for the policies and product guidance your team trusts." note="Knowledge management will appear here." />;
+  return <AppShell><DocumentList /></AppShell>;
 }
