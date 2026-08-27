@@ -19,10 +19,20 @@ from app.services.embeddings import (
 
 
 @dataclass(frozen=True, slots=True)
+class EmbeddingFailure:
+    exception_type: str
+    message: str
+    http_status: int | None
+    retry_count: int
+    stage: str
+
+
+@dataclass(frozen=True, slots=True)
 class EmbeddingRunResult:
     processed: int = 0
     skipped: int = 0
     failed: int = 0
+    failures: tuple[EmbeddingFailure, ...] = ()
 
     @property
     def status(self) -> str:
@@ -73,13 +83,23 @@ class EmbeddingGenerationService:
         processed = 0
         skipped = existing
         failed = 0
+        failures: list[EmbeddingFailure] = []
         for start in range(0, len(chunks), effective_batch_size):
             batch = chunks[start : start + effective_batch_size]
             try:
                 vectors = self._embed_with_retry([chunk.content for chunk in batch])
                 self._validate_vectors(vectors, len(batch))
-            except EmbeddingProviderError:
+            except EmbeddingProviderError as exc:
                 failed += len(batch)
+                failures.append(
+                    EmbeddingFailure(
+                        exception_type=exc.exception_type,
+                        message=str(exc),
+                        http_status=exc.http_status,
+                        retry_count=exc.retry_count,
+                        stage=exc.stage,
+                    )
+                )
                 continue
             try:
                 stored = self.repository.store_embeddings(
@@ -89,10 +109,24 @@ class EmbeddingGenerationService:
                 self.session.commit()
                 processed += stored
                 skipped += len(batch) - stored
-            except Exception:
+            except Exception as exc:
                 self.session.rollback()
                 failed += len(batch)
-        return EmbeddingRunResult(processed=processed, skipped=skipped, failed=failed)
+                failures.append(
+                    EmbeddingFailure(
+                        exception_type=type(exc).__name__,
+                        message="The embedding database transaction failed.",
+                        http_status=None,
+                        retry_count=0,
+                        stage="after_provider_request",
+                    )
+                )
+        return EmbeddingRunResult(
+            processed=processed,
+            skipped=skipped,
+            failed=failed,
+            failures=tuple(failures),
+        )
 
     def _embed_with_retry(self, texts: list[str]) -> list[list[float]]:
         attempt = 0
@@ -101,8 +135,9 @@ class EmbeddingGenerationService:
                 return self.provider.embed_texts(texts)
             except EmbeddingResponseError:
                 raise
-            except EmbeddingProviderError:
+            except EmbeddingProviderError as exc:
                 if attempt >= self.settings.embedding_max_retries:
+                    exc.retry_count = attempt
                     raise
                 delay = min(
                     self.settings.embedding_retry_backoff_seconds * (2 ** attempt),

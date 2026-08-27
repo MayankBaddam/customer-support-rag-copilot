@@ -1,8 +1,8 @@
-import json
 from uuid import uuid4
 
 import httpx
 import pytest
+from google.genai import errors, types
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,7 @@ from app.models import Base, Document, DocumentChunk, DocumentFileType, Document
 from app.repositories.embeddings import EmbeddingPersistenceError, EmbeddingRepository
 from app.services.embeddings import (
     EmbeddingDimensionError,
+    EmbeddingProviderError,
     EmbeddingQuotaError,
     EmbeddingResponseError,
     EmbeddingTimeoutError,
@@ -30,8 +31,25 @@ def embedding_settings(**overrides) -> Settings:
     return Settings(_env_file=None, **values)
 
 
-def response_vectors(count: int, dimension: int = 768) -> dict:
-    return {"embeddings": [{"values": [float(index)] * dimension} for index in range(count)]}
+def response_vectors(count: int, dimension: int = 768) -> types.EmbedContentResponse:
+    return types.EmbedContentResponse(
+        embeddings=[types.ContentEmbedding(values=[float(index)] * dimension) for index in range(count)]
+    )
+
+
+class MockSdkModels:
+    def __init__(self, handler):
+        self.handler = handler
+        self.calls = []
+
+    def embed_content(self, **kwargs):
+        self.calls.append(kwargs)
+        return self.handler(kwargs)
+
+
+class MockSdkClient:
+    def __init__(self, handler):
+        self.models = MockSdkModels(handler)
 
 
 def test_embedding_configuration_defaults_and_secret_safety():
@@ -46,83 +64,88 @@ def test_embedding_configuration_defaults_and_secret_safety():
 
 
 def test_provider_request_shape_and_query_task_type():
-    captured = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured.append((request, json.loads(request.content)))
-        return httpx.Response(200, json=response_vectors(1))
-
-    provider = GeminiEmbeddingProvider(httpx.Client(transport=httpx.MockTransport(handler)), embedding_settings())
+    client = MockSdkClient(lambda _: response_vectors(1))
+    provider = GeminiEmbeddingProvider(client, embedding_settings())
     vector = provider.embed_query("How do refunds work?")
 
-    request, payload = captured[0]
-    assert request.url.path.endswith("/models/gemini-embedding-001:batchEmbedContents")
-    assert request.headers["x-goog-api-key"] == "test-api-key"
-    assert payload["requests"][0] == {
-        "model": "models/gemini-embedding-001",
-        "content": {"parts": [{"text": "How do refunds work?"}]},
-        "embedContentConfig": {"taskType": "RETRIEVAL_QUERY", "outputDimensionality": 768},
-    }
+    request = client.models.calls[0]
+    assert request["model"] == "gemini-embedding-001"
+    assert request["contents"] == ["How do refunds work?"]
+    assert request["config"].task_type == "RETRIEVAL_QUERY"
+    assert request["config"].output_dimensionality == 768
     assert len(vector) == 768
 
 
 def test_provider_batches_and_preserves_response_mapping():
-    batch_sizes = []
+    offset = 0
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        payload = json.loads(request.content)
-        batch_sizes.append(len(payload["requests"]))
-        start = sum(batch_sizes[:-1])
-        return httpx.Response(200, json={"embeddings": [{"values": [float(start + index)] * 768} for index in range(batch_sizes[-1])]})
+    def handler(request):
+        nonlocal offset
+        embeddings = [types.ContentEmbedding(values=[float(offset + index)] * 768) for index, _ in enumerate(request["contents"])]
+        offset += len(embeddings)
+        return types.EmbedContentResponse(embeddings=embeddings)
 
-    provider = GeminiEmbeddingProvider(httpx.Client(transport=httpx.MockTransport(handler)), embedding_settings())
+    client = MockSdkClient(handler)
+    provider = GeminiEmbeddingProvider(client, embedding_settings())
     vectors = provider.embed_texts(["one", "two", "three"])
 
-    assert batch_sizes == [2, 1]
+    assert [len(call["contents"]) for call in client.models.calls] == [2, 1]
     assert [vector[0] for vector in vectors] == [0.0, 1.0, 2.0]
 
 
 def test_provider_empty_input_makes_no_request():
-    client = httpx.Client(transport=httpx.MockTransport(lambda _: pytest.fail("request was made")))
+    client = MockSdkClient(lambda _: pytest.fail("request was made"))
     assert GeminiEmbeddingProvider(client, embedding_settings()).embed_texts([]) == []
 
 
 def test_provider_timeout_is_safe():
-    def handler(request: httpx.Request) -> httpx.Response:
-        raise httpx.ReadTimeout("sensitive provider detail", request=request)
+    def handler(_request):
+        raise httpx.ReadTimeout("sensitive provider detail")
 
-    provider = GeminiEmbeddingProvider(httpx.Client(transport=httpx.MockTransport(handler)), embedding_settings())
+    provider = GeminiEmbeddingProvider(MockSdkClient(handler), embedding_settings())
     with pytest.raises(EmbeddingTimeoutError, match="timed out") as caught:
         provider.embed_texts(["private document content"])
     assert "private document" not in str(caught.value)
 
 
 def test_provider_quota_error_is_safe():
-    provider = GeminiEmbeddingProvider(
-        httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(429, json={"error": "provider detail"}))),
-        embedding_settings(),
-    )
-    with pytest.raises(EmbeddingQuotaError, match="quota"):
+    def handler(_request):
+        raise errors.ClientError(429, {"error": {"message": "Quota exceeded", "status": "RESOURCE_EXHAUSTED"}})
+
+    provider = GeminiEmbeddingProvider(MockSdkClient(handler), embedding_settings())
+    with pytest.raises(EmbeddingQuotaError, match="(?i)quota"):
         provider.embed_texts(["content"])
 
 
-@pytest.mark.parametrize("payload", [{}, {"embeddings": []}, {"embeddings": [{"wrong": []}]}])
-def test_provider_rejects_malformed_responses(payload):
-    provider = GeminiEmbeddingProvider(
-        httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))),
-        embedding_settings(),
-    )
+@pytest.mark.parametrize(
+    "response",
+    [
+        types.EmbedContentResponse(),
+        types.EmbedContentResponse(embeddings=[]),
+        types.EmbedContentResponse(embeddings=[types.ContentEmbedding()]),
+    ],
+)
+def test_provider_rejects_malformed_responses(response):
+    provider = GeminiEmbeddingProvider(MockSdkClient(lambda _: response), embedding_settings())
     with pytest.raises(EmbeddingResponseError):
         provider.embed_texts(["content"])
 
 
 def test_provider_rejects_wrong_vector_dimension():
-    provider = GeminiEmbeddingProvider(
-        httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=response_vectors(1, 767)))),
-        embedding_settings(),
-    )
+    provider = GeminiEmbeddingProvider(MockSdkClient(lambda _: response_vectors(1, 767)), embedding_settings())
     with pytest.raises(EmbeddingDimensionError, match="wrong dimension"):
         provider.embed_texts(["content"])
+
+
+def test_provider_rejects_empty_text_before_request():
+    client = MockSdkClient(lambda _: pytest.fail("request was made"))
+    provider = GeminiEmbeddingProvider(client, embedding_settings())
+
+    with pytest.raises(EmbeddingProviderError) as caught:
+        provider.embed_texts([" "])
+
+    assert caught.value.stage == "before_provider_request"
+    assert client.models.calls == []
 
 
 @pytest.fixture

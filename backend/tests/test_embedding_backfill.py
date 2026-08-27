@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.models import Base, Document, DocumentChunk, DocumentFileType, DocumentStatus, Profile, ProfileRole
-from app.services.embedding_generation import EmbeddingGenerationService, EmbeddingRunResult
+from app.services.embedding_generation import EmbeddingFailure, EmbeddingGenerationService, EmbeddingRunResult
 from app.services.embeddings import EmbeddingQuotaError, EmbeddingTimeoutError
 
 
@@ -186,6 +186,11 @@ def test_retry_limit_reports_failed_batch(session):
     assert result.failed == 1
     assert len(provider.calls) == 3
     assert result.status == "partial_failure"
+    assert result.failures[0].exception_type == "EmbeddingQuotaError"
+    assert result.failures[0].message == "quota"
+    assert result.failures[0].http_status is None
+    assert result.failures[0].retry_count == 2
+    assert result.failures[0].stage == "during_provider_request"
 
 
 def test_partial_failure_preserves_earlier_committed_batch(session):
@@ -263,7 +268,20 @@ def test_cli_forwards_all_options_and_returns_nonzero_for_failures(monkeypatch, 
 
         def run(self, **kwargs):
             captured.update(kwargs)
-            return EmbeddingRunResult(processed=2, skipped=3, failed=1)
+            return EmbeddingRunResult(
+                processed=2,
+                skipped=3,
+                failed=1,
+                failures=(
+                    EmbeddingFailure(
+                        exception_type="ClientError",
+                        message="Quota exceeded",
+                        http_status=429,
+                        retry_count=2,
+                        stage="during_provider_request",
+                    ),
+                ),
+            )
 
     monkeypatch.setattr(cli, "Session", FakeSession)
     monkeypatch.setattr(cli, "get_database_engine", lambda: object())
@@ -282,4 +300,9 @@ def test_cli_forwards_all_options_and_returns_nonzero_for_failures(monkeypatch, 
         "limit": 9,
         "dry_run": True,
     }
-    assert '"processed": 2' in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert '"processed": 2' in output
+    assert '"exception_type": "ClientError"' in output
+    assert '"http_status": 429' in output
+    assert '"retry_count": 2' in output
+    assert '"stage": "during_provider_request"' in output
