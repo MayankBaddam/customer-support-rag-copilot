@@ -76,3 +76,10 @@ class DocumentChunkListResponse(BaseModel):
     page: int
     page_size: int
     total: int
+
+
+class DocumentEmbeddingResponse(BaseModel):
+    processed: int
+    skipped: int
+    failed: int
+    status: str

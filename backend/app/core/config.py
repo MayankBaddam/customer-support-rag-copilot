@@ -45,6 +45,17 @@ class Settings(BaseSettings):
         gt=0,
         validation_alias="EMBEDDING_API_TIMEOUT_SECONDS",
     )
+    embedding_max_retries: int = Field(default=2, ge=0, le=5, validation_alias="EMBEDDING_MAX_RETRIES")
+    embedding_retry_backoff_seconds: float = Field(
+        default=0.5,
+        ge=0,
+        validation_alias="EMBEDDING_RETRY_BACKOFF_SECONDS",
+    )
+    embedding_retry_max_backoff_seconds: float = Field(
+        default=4.0,
+        ge=0,
+        validation_alias="EMBEDDING_RETRY_MAX_BACKOFF_SECONDS",
+    )
     seed_demo_user_id: str | None = Field(default=None, validation_alias="SEED_DEMO_USER_ID")
 
     model_config = SettingsConfigDict(

@@ -557,6 +557,45 @@ Deliverable:
 
 > The expected source appears in the top five results for at least 80% of the initial test questions.
 
+#### Embedding backfill operations
+
+Run the backfill explicitly from the `backend` directory. It is never started by application startup,
+migrations, or tests:
+
+```powershell
+python -m app.embedding_backfill
+```
+
+Useful options:
+
+```powershell
+python -m app.embedding_backfill --dry-run
+python -m app.embedding_backfill --document-id <document-uuid>
+python -m app.embedding_backfill --batch-size 8 --limit 100
+python -m app.embedding_backfill --force
+```
+
+The default run selects only chunks belonging to completed documents whose embedding is null. It
+commits one batch at a time, so a rerun safely skips already committed embeddings. `--dry-run` makes
+no Gemini requests and writes nothing. `--force` is the only mode that replaces existing vectors;
+use it deliberately because it consumes quota again. Timeout, network, and quota failures receive a
+small number of bounded-backoff retries, and the command exits non-zero if any batch still fails.
+
+To verify counts without returning vector values, query PostgreSQL directly with an authorized
+administrative connection:
+
+```sql
+select document_id, count(*) as total_chunks, count(embedding) as embedded_chunks
+from document_chunks
+group by document_id
+order by document_id;
+```
+
+Keep `GEMINI_API_KEY` only in backend environment configuration. Do not print chunk content, API keys,
+or vectors in command output or logs. The optional authenticated
+`POST /api/v1/documents/{document_id}/embed` endpoint applies the same completed-document,
+idempotency, batching, retry, and force-mode rules and returns counts and status only.
+
 ### Phase 5 — Grounded answer generation
 
 **Objective:** generate useful answers without hiding uncertainty.

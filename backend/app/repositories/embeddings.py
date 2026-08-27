@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import Document, DocumentChunk, DocumentStatus
@@ -17,15 +17,37 @@ class EmbeddingRepository:
         self.session = session
         self.dimension = dimension
 
-    def list_completed_chunks_without_embeddings(self, *, limit: int = 100) -> list[DocumentChunk]:
+    def list_completed_chunks_without_embeddings(
+        self,
+        *,
+        document_id: UUID | None = None,
+        limit: int | None = None,
+        include_embedded: bool = False,
+    ) -> list[DocumentChunk]:
         statement = (
             select(DocumentChunk)
             .join(Document, Document.id == DocumentChunk.document_id)
-            .where(Document.status == DocumentStatus.COMPLETED, DocumentChunk.embedding.is_(None))
+            .where(Document.status == DocumentStatus.COMPLETED)
             .order_by(DocumentChunk.document_id, DocumentChunk.chunk_index)
-            .limit(limit)
         )
+        if document_id is not None:
+            statement = statement.where(Document.id == document_id)
+        if not include_embedded:
+            statement = statement.where(DocumentChunk.embedding.is_(None))
+        if limit is not None:
+            statement = statement.limit(limit)
         return list(self.session.scalars(statement).all())
+
+    def count_completed_chunks_with_embeddings(self, *, document_id: UUID | None = None) -> int:
+        statement = (
+            select(func.count())
+            .select_from(DocumentChunk)
+            .join(Document, Document.id == DocumentChunk.document_id)
+            .where(Document.status == DocumentStatus.COMPLETED, DocumentChunk.embedding.is_not(None))
+        )
+        if document_id is not None:
+            statement = statement.where(Document.id == document_id)
+        return self.session.scalar(statement) or 0
 
     def store_embeddings(
         self,
