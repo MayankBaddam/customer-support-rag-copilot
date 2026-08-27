@@ -32,6 +32,11 @@ class SupabaseStorageAdapter:
         return b""
 
     async def _request(self, *, method: str, bucket: str, path: str, data: bytes | None = None, content_type: str | None = None, return_bytes: bool = False):
+        operation = {"get": "download", "delete": "delete", "post": "upload"}.get(method, "storage")
+        error_code = f"STORAGE_{operation.upper()}_FAILED"
+        operation_message = {"download": "downloaded", "delete": "deleted", "upload": "uploaded"}.get(
+            operation, "completed"
+        )
         if not self._settings.supabase_url:
             raise APIError("STORAGE_CONFIG_ERROR", "Storage is not configured.", 500)
         if not self._settings.supabase_secret_key:
@@ -56,10 +61,10 @@ class SupabaseStorageAdapter:
                     files={"file": (path.rsplit("/", 1)[-1], data or b"", content_type or "application/octet-stream")},
                 )
         except httpx.HTTPError as exc:
-            raise APIError("STORAGE_UPLOAD_FAILED", "The document could not be uploaded.", 502) from exc
+            raise APIError(error_code, f"The document could not be {operation_message}.", 502) from exc
 
         if response.status_code >= 300:
-            raise APIError("STORAGE_UPLOAD_FAILED", "The document could not be uploaded.", 502)
+            raise APIError(error_code, f"The document could not be {operation_message}.", 502)
 
         if return_bytes:
             return response.content

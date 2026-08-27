@@ -1,5 +1,5 @@
 import io
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,13 +10,16 @@ from sqlalchemy.pool import StaticPool
 from app.api.dependencies import get_current_profile, get_db
 from app.core.errors import APIError
 from app.main import app
-from app.models import Base, Document, DocumentStatus, Profile, ProfileRole
+from app.models import Base, Document, DocumentChunk, DocumentStatus, Profile, ProfileRole
 from app.services.storage import SupabaseStorageAdapter
 
 
 class MockStorage(SupabaseStorageAdapter):
-    def __init__(self, *, fail_upload=False):
+    def __init__(self, *, fail_upload=False, fail_download=False, fail_delete=False):
         self.fail_upload = fail_upload
+        self.fail_download = fail_download
+        self.fail_delete = fail_delete
+        self.download_content = b"downloaded"
         self.uploaded = []
         self.deleted = []
 
@@ -26,10 +29,14 @@ class MockStorage(SupabaseStorageAdapter):
         self.uploaded.append({"bucket": bucket, "path": path, "size": len(data), "content_type": content_type})
 
     async def delete_object(self, *, bucket: str, path: str) -> None:
+        if self.fail_delete:
+            raise APIError("STORAGE_DELETE_FAILED", "The document could not be deleted.", 502)
         self.deleted.append({"bucket": bucket, "path": path})
 
     async def download_object(self, *, bucket: str, path: str) -> bytes:
-        return b"downloaded"
+        if self.fail_download:
+            raise APIError("STORAGE_DOWNLOAD_FAILED", "The document could not be downloaded.", 502)
+        return self.download_content
 
 
 @pytest.fixture
@@ -262,3 +269,132 @@ def test_document_upload_returns_safe_error_payload(document_api_client):
     assert payload["error"]["message"] == "The document could not be uploaded."
     assert "secret" not in str(payload).lower()
     assert "supabase" not in str(payload).lower()
+
+
+def _upload_text(client, title="Guide", content=b"first paragraph\n\nsecond paragraph"):
+    return client.post(
+        "/api/v1/documents",
+        data={"title": title},
+        files={"file": (f"{title}.txt", content, "text/plain")},
+    )
+
+
+def test_document_processing_completes_and_is_idempotent(document_api_client):
+    client, _, storage, session_factory = document_api_client
+    created = _upload_text(client)
+    document_id = created.json()["id"]
+
+    processed = client.post(f"/api/v1/documents/{document_id}/process")
+    assert processed.status_code == 200, processed.text
+    assert processed.json()["status"] == "completed"
+    assert processed.json()["chunk_count"] == 1
+
+    reprocessed = client.post(f"/api/v1/documents/{document_id}/reprocess")
+    assert reprocessed.status_code == 200
+    with session_factory() as session:
+        document = session.get(Document, UUID(document_id))
+        assert document.chunk_count == 1
+        assert session.query(DocumentChunk).filter_by(document_id=UUID(document_id)).count() == 1
+    assert storage.deleted == []
+
+
+def test_document_processing_failure_sets_failed_and_can_recover(document_api_client):
+    client, _, storage, session_factory = document_api_client
+    document_id = _upload_text(client).json()["id"]
+    storage.fail_download = True
+
+    failed = client.post(f"/api/v1/documents/{document_id}/process")
+    assert failed.status_code == 422
+    with session_factory() as session:
+        document = session.get(Document, UUID(document_id))
+        assert document.status == DocumentStatus.FAILED
+        assert document.error_message == "Document storage operation failed."
+
+    storage.fail_download = False
+    recovered = client.post(f"/api/v1/documents/{document_id}/reprocess")
+    assert recovered.status_code == 200
+    assert recovered.json()["status"] == "completed"
+
+
+def test_document_processing_rejects_archived_and_concurrent_states(document_api_client):
+    client, _, _, session_factory = document_api_client
+    document_id = _upload_text(client).json()["id"]
+    with session_factory() as session:
+        document = session.get(Document, UUID(document_id))
+        document.status = DocumentStatus.ARCHIVED
+        session.commit()
+    archived = client.post(f"/api/v1/documents/{document_id}/process")
+    assert archived.status_code == 409
+    assert archived.json()["error"]["code"] == "DOCUMENT_ARCHIVED"
+
+    with session_factory() as session:
+        document = session.get(Document, UUID(document_id))
+        document.status = DocumentStatus.PROCESSING
+        session.commit()
+    concurrent = client.post(f"/api/v1/documents/{document_id}/process")
+    assert concurrent.status_code == 409
+    assert concurrent.json()["error"]["code"] == "DOCUMENT_ALREADY_PROCESSING"
+
+
+def test_document_list_filters_searches_and_paginates(document_api_client):
+    client, _, _, _ = document_api_client
+    _upload_text(client, "Alpha manual")
+    _upload_text(client, "Beta notes", b"different")
+
+    response = client.get("/api/v1/documents", params={"search": "alpha", "page": 1, "page_size": 1})
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["items"][0]["title"] == "Alpha manual"
+
+
+def test_document_chunks_are_paginated_and_ordered(document_api_client):
+    client, _, _, _ = document_api_client
+    document_id = _upload_text(client).json()["id"]
+    assert client.post(f"/api/v1/documents/{document_id}/process").status_code == 200
+
+    response = client.get(f"/api/v1/documents/{document_id}/chunks", params={"page_size": 1})
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["items"][0]["chunk_index"] == 0
+    assert response.json()["items"][0]["token_count"] > 0
+    assert "embedding" not in response.json()["items"][0]
+
+
+def test_document_delete_removes_storage_row_and_chunks(document_api_client):
+    client, _, storage, session_factory = document_api_client
+    document_id = _upload_text(client).json()["id"]
+    assert client.post(f"/api/v1/documents/{document_id}/process").status_code == 200
+
+    deleted = client.delete(f"/api/v1/documents/{document_id}")
+    assert deleted.status_code == 204
+    assert len(storage.deleted) == 1
+    with session_factory() as session:
+        assert session.get(Document, UUID(document_id)) is None
+        assert session.query(DocumentChunk).filter_by(document_id=UUID(document_id)).count() == 0
+
+
+def test_document_delete_storage_failure_preserves_database(document_api_client):
+    client, _, storage, session_factory = document_api_client
+    document_id = _upload_text(client).json()["id"]
+    storage.fail_delete = True
+
+    response = client.delete(f"/api/v1/documents/{document_id}")
+    assert response.status_code == 502
+    assert response.json()["error"]["code"] == "STORAGE_DELETE_FAILED"
+    with session_factory() as session:
+        assert session.get(Document, UUID(document_id)) is not None
+
+
+def test_document_management_requires_owner(document_api_client):
+    client, _, _, _ = document_api_client
+    document_id = _upload_text(client).json()["id"]
+    from app.api.v1.documents import get_current_profile
+
+    other = Profile(id=uuid4(), full_name="Other", role=ProfileRole.AGENT)
+    app.dependency_overrides[get_current_profile] = lambda: other
+    try:
+        assert client.get(f"/api/v1/documents/{document_id}").status_code == 404
+        assert client.post(f"/api/v1/documents/{document_id}/process").status_code == 404
+        assert client.delete(f"/api/v1/documents/{document_id}").status_code == 404
+    finally:
+        app.dependency_overrides.pop(get_current_profile, None)

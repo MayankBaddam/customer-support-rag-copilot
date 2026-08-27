@@ -41,6 +41,13 @@ class DocumentResponse(BaseModel):
     processed_at: datetime | None
 
 
+class DocumentListResponse(BaseModel):
+    items: list[DocumentResponse]
+    page: int
+    page_size: int
+    total: int
+
+
 class DocumentChunkCreate(BaseModel):
     chunk_index: int = Field(ge=0)
     content: str
@@ -60,5 +67,12 @@ class DocumentChunkResponse(BaseModel):
     section_title: str | None
     page_number: int | None
     token_count: int
-    metadata: dict
+    metadata: dict = Field(validation_alias="chunk_metadata", serialization_alias="metadata")
     created_at: datetime
+
+
+class DocumentChunkListResponse(BaseModel):
+    items: list[DocumentChunkResponse]
+    page: int
+    page_size: int
+    total: int
