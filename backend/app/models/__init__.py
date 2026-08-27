@@ -1,7 +1,10 @@
 from app.models.base import Base
 from app.models.conversation import Conversation
+from app.models.document import Document, DocumentChunk
 from app.models.enums import (
     CustomerPlan,
+    DocumentFileType,
+    DocumentStatus,
     ProfileRole,
     SenderType,
     TicketCategory,
@@ -16,6 +19,10 @@ __all__ = [
     "Base",
     "Conversation",
     "CustomerPlan",
+    "Document",
+    "DocumentChunk",
+    "DocumentFileType",
+    "DocumentStatus",
     "Message",
     "Profile",
     "ProfileRole",

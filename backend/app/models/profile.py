@@ -24,3 +24,6 @@ class Profile(TimestampMixin, Base):
     created_tickets: Mapped[list["Ticket"]] = relationship(
         back_populates="creator", foreign_keys="Ticket.created_by"
     )
+    documents: Mapped[list["Document"]] = relationship(
+        back_populates="uploader", foreign_keys="Document.uploaded_by"
+    )

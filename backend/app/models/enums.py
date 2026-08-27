@@ -43,3 +43,17 @@ class SenderType(StrEnum):
     CUSTOMER = "customer"
     AGENT = "agent"
     SYSTEM = "system"
+
+
+class DocumentFileType(StrEnum):
+    PDF = "pdf"
+    MARKDOWN = "markdown"
+    TEXT = "text"
+
+
+class DocumentStatus(StrEnum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    ARCHIVED = "archived"
