@@ -32,9 +32,7 @@ async def test_readiness_returns_503_when_dependency_fails(client):
         client.app.state.readiness_check = original_check
 
     assert response.status_code == 503
-    assert response.json() == {
-        "error": {
-            "code": "DEPENDENCY_UNAVAILABLE",
-            "message": "A required dependency is unavailable.",
-        }
-    }
+    error = response.json()["error"]
+    assert error["code"] == "DEPENDENCY_UNAVAILABLE"
+    assert error["message"] == "A required dependency is unavailable."
+    assert error["request_id"] == response.headers["x-request-id"]

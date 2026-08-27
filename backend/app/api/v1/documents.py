@@ -36,7 +36,7 @@ ALLOWED_TYPES = {
     ".markdown": (DocumentFileType.MARKDOWN, "text/markdown"),
     ".txt": (DocumentFileType.TEXT, "text/plain"),
 }
-ALLOWED_MIME_TYPES = {"application/pdf", "text/plain", "text/markdown", "text/x-markdown"}
+ALLOWED_MIME_TYPES = {"application/pdf", "text/plain", "text/markdown"}
 
 
 def _safe_filename(filename: str) -> str:
@@ -56,7 +56,7 @@ def _resolve_file_type(filename: str, mime_type: str) -> tuple[DocumentFileType,
     expected_type, expected_mime = ALLOWED_TYPES[ext]
     if mime_type not in ALLOWED_MIME_TYPES:
         raise APIError("UNSUPPORTED_MIME_TYPE", "Unsupported document MIME type.", 400)
-    if mime_type != expected_mime and mime_type not in {expected_mime, "text/x-markdown"}:
+    if mime_type != expected_mime:
         raise APIError("MIME_TYPE_MISMATCH", "The uploaded file does not match the file type.", 400)
     return expected_type, expected_mime
 
@@ -74,11 +74,11 @@ async def create_document(
     if file is None:
         raise APIError("MISSING_FILE", "A document file is required.", 400)
 
-    content = await file.read()
+    settings = get_settings()
+    content = await file.read(settings.max_document_size_bytes + 1)
     if not content:
         raise APIError("EMPTY_FILE", "The uploaded file is empty.", 400)
 
-    settings = get_settings()
     if len(content) > settings.max_document_size_bytes:
         raise APIError("FILE_TOO_LARGE", "The uploaded file exceeds the maximum allowed size.", 400)
 

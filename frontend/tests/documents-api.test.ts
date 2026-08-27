@@ -28,6 +28,22 @@ describe("document API client", () => {
     await expect(processDocument("token", "doc-1")).rejects.toBeInstanceOf(ApiClientError);
   });
 
+  it.each([401, 403, 404, 429, 500])("preserves HTTP %i for frontend error states", async (status) => {
+    vi.spyOn(global, "fetch").mockResolvedValue(new Response(JSON.stringify({ error: { code: "SAFE_ERROR", message: "Safe message." } }), { status }));
+
+    await expect(getDocuments("token", { page: 1, pageSize: 10 })).rejects.toEqual(
+      expect.objectContaining({ message: "Safe message.", status }),
+    );
+  });
+
+  it("represents network failures without an HTTP status", async () => {
+    vi.spyOn(global, "fetch").mockRejectedValue(new TypeError("private network detail"));
+
+    await expect(getDocuments("token", { page: 1, pageSize: 10 })).rejects.toEqual(
+      expect.objectContaining({ message: "The backend could not be reached.", status: undefined }),
+    );
+  });
+
   it("handles a successful empty delete response", async () => {
     const fetchMock = vi.spyOn(global, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
     await expect(deleteDocument("token", "doc-1")).resolves.toBeUndefined();

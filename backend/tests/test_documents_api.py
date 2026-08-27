@@ -201,6 +201,18 @@ def test_document_upload_rejects_mismatched_mime_type(document_api_client):
     assert response.json()["error"]["code"] == "MIME_TYPE_MISMATCH"
 
 
+def test_document_upload_rejects_non_allowlisted_markdown_mime_type(document_api_client):
+    client, _, _, _ = document_api_client
+    response = client.post(
+        "/api/v1/documents",
+        data={"title": "Legacy Markdown MIME"},
+        files={"file": ("notes.md", b"# Notes", "text/x-markdown")},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "UNSUPPORTED_MIME_TYPE"
+
+
 def test_document_upload_sanitizes_unsafe_filename(document_api_client):
     client, _, _, _ = document_api_client
     response = client.post(
@@ -423,11 +435,29 @@ def test_document_management_requires_owner(document_api_client):
     other = Profile(id=uuid4(), full_name="Other", role=ProfileRole.AGENT)
     app.dependency_overrides[get_current_profile] = lambda: other
     try:
+        listed = client.get("/api/v1/documents")
+        assert listed.status_code == 200
+        assert listed.json()["items"] == []
         assert client.get(f"/api/v1/documents/{document_id}").status_code == 404
+        assert client.get(f"/api/v1/documents/{document_id}/chunks").status_code == 404
         assert client.post(f"/api/v1/documents/{document_id}/process").status_code == 404
         assert client.delete(f"/api/v1/documents/{document_id}").status_code == 404
     finally:
         app.dependency_overrides.pop(get_current_profile, None)
+
+
+def test_document_content_is_not_logged(document_api_client, caplog):
+    client, _, _, _ = document_api_client
+    private_content = b"phase-five-private-document-marker"
+
+    response = client.post(
+        "/api/v1/documents",
+        data={"title": "Logging check"},
+        files={"file": ("logging-check.txt", private_content, "text/plain")},
+    )
+
+    assert response.status_code == 201
+    assert private_content.decode() not in caplog.text
 
 
 def test_document_embedding_endpoint_processes_completed_owner_document(document_api_client):

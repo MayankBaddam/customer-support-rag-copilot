@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
-import { ApiClientError } from "@/lib/api-client";
+import { ApiErrorState } from "@/components/errors/api-error-state";
 import { useSemanticSearch } from "@/hooks/use-semantic-search";
 
 const topKOptions = Array.from({ length: 10 }, (_, index) => index + 1);
@@ -22,8 +21,6 @@ export function RetrievalDebug() {
       // React Query exposes the safe error state below.
     }
   };
-
-  const unauthorized = search.error instanceof ApiClientError && search.error.status === 401;
 
   return <div className="retrieval-workspace">
     <div className="retrieval-heading">
@@ -56,11 +53,7 @@ export function RetrievalDebug() {
     </form>
 
     {search.isPending && <div className="retrieval-state" role="status"><h2>Searching embedded knowledge</h2><p>Generating the query embedding and ranking matching chunks.</p></div>}
-    {search.isError && <div className="retrieval-state retrieval-error" role="alert">
-      <h2>{unauthorized ? "Your session has expired" : "Search could not be completed"}</h2>
-      <p>{unauthorized ? "Sign in again to search the private knowledge base." : "Check the backend connection and try your search again."}</p>
-      {unauthorized && <Link className="secondary-button" href="/login">Return to sign in</Link>}
-    </div>}
+    {search.isError && <ApiErrorState error={search.error} fallbackTitle="Search could not be completed" fallbackMessage="Check the backend connection and try your search again." />}
     {search.isSuccess && search.data.results.length === 0 && <div className="retrieval-state">
       <h2>No matching evidence</h2>
       <p>Try a broader query or verify that completed documents have embeddings.</p>

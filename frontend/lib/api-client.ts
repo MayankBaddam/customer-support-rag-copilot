@@ -1,4 +1,4 @@
-import type { ApiError, CustomerPlan, DocumentChunkListResponse, DocumentFileType, DocumentListResponse, DocumentStatus, HealthResponse, KnowledgeDocument, Message, MessageCreate, SemanticSearchRequest, SemanticSearchResponse, TicketCategory, TicketDetail, TicketListResponse, TicketPriority, TicketStatus } from "@/types/api";
+import type { ApiError, CustomerPlan, DocumentChunkListResponse, DocumentFileType, DocumentListResponse, DocumentStatus, GroundedAnswerResponse, HealthResponse, KnowledgeDocument, Message, MessageCreate, SemanticSearchRequest, SemanticSearchResponse, TicketCategory, TicketDetail, TicketListResponse, TicketPriority, TicketStatus } from "@/types/api";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -23,12 +23,7 @@ export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
 }
 
 export async function getCurrentProfile(accessToken: string): Promise<import("@/types/api").ProfileResponse> {
-  const response = await fetch(`${apiUrl}/api/v1/auth/me`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    cache: "no-store",
-  });
-  if (!response.ok) throw new ApiClientError("The authenticated profile could not be loaded.", response.status);
-  return (await response.json()) as import("@/types/api").ProfileResponse;
+  return request<import("@/types/api").ProfileResponse>("/api/v1/auth/me", accessToken);
 }
 
 async function request<T>(path: string, token: string, options?: RequestInit): Promise<T> {
@@ -104,4 +99,11 @@ export async function searchKnowledgeChunks(token: string, payload: SemanticSear
       original_filename: filenames.get(result.document_id),
     })),
   };
+}
+
+export function generateGroundedAnswer(token: string, payload: SemanticSearchRequest) {
+  return request<GroundedAnswerResponse>("/api/v1/copilot/answer", token, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
