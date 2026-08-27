@@ -29,6 +29,22 @@ class Settings(BaseSettings):
         default=5_242_880,
         validation_alias="MAX_DOCUMENT_SIZE_BYTES",
     )
+    gemini_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias="GEMINI_API_KEY",
+        exclude=True,
+    )
+    embedding_model: str = Field(
+        default="gemini-embedding-001",
+        validation_alias="EMBEDDING_MODEL",
+    )
+    embedding_dimension: int = Field(default=768, gt=0, validation_alias="EMBEDDING_DIMENSION")
+    embedding_batch_size: int = Field(default=16, gt=0, validation_alias="EMBEDDING_BATCH_SIZE")
+    embedding_api_timeout_seconds: float = Field(
+        default=30.0,
+        gt=0,
+        validation_alias="EMBEDDING_API_TIMEOUT_SECONDS",
+    )
     seed_demo_user_id: str | None = Field(default=None, validation_alias="SEED_DEMO_USER_ID")
 
     model_config = SettingsConfigDict(
