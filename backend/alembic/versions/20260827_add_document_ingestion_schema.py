@@ -1,6 +1,6 @@
 """Add document ingestion schema.
 
-Revision ID: 20260827_add_document_ingestion_schema
+Revision ID: 20260827_document_ingestion
 Revises: 20260826_add_support_schema
 """
 
@@ -8,7 +8,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = "20260827_add_document_ingestion_schema"
+revision = "20260827_document_ingestion"
 down_revision = "20260826_add_support_schema"
 branch_labels = None
 depends_on = None

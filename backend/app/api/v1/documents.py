@@ -275,14 +275,23 @@ async def delete_document(
     storage: Annotated[SupabaseStorageAdapter, Depends(get_storage_adapter)],
 ) -> Response:
     document = _owned_document(session, document_id, profile)
-    try:
-        await storage.delete_object(bucket=document.storage_bucket, path=document.storage_path)
-    except APIError:
-        raise
-    except Exception as exc:
-        raise APIError("STORAGE_DELETE_FAILED", "The document could not be deleted.", 502) from exc
+    storage_bucket = document.storage_bucket
+    storage_path = document.storage_path
     try:
         session.delete(document)
+        session.flush()
+    except Exception as exc:
+        session.rollback()
+        raise APIError("DOCUMENT_DELETE_FAILED", "The document could not be deleted.", 500) from exc
+    try:
+        await storage.delete_object(bucket=storage_bucket, path=storage_path)
+    except APIError:
+        session.rollback()
+        raise
+    except Exception as exc:
+        session.rollback()
+        raise APIError("STORAGE_DELETE_FAILED", "The document could not be deleted.", 502) from exc
+    try:
         session.commit()
     except Exception as exc:
         session.rollback()

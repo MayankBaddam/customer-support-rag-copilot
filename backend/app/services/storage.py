@@ -44,10 +44,10 @@ class SupabaseStorageAdapter:
 
         encoded_path = quote(path, safe="/")
         url = f"{self._settings.supabase_url.rstrip('/')}/storage/v1/object/{bucket}/{encoded_path}"
-        headers = {
-            "Authorization": f"Bearer {self._settings.supabase_secret_key.get_secret_value()}",
-            "apikey": self._settings.supabase_anon_key or "",
-        }
+        secret_key = self._settings.supabase_secret_key.get_secret_value()
+        headers = {"apikey": secret_key}
+        if not secret_key.startswith("sb_secret_"):
+            headers["Authorization"] = f"Bearer {secret_key}"
 
         try:
             if method == "get":
@@ -57,11 +57,19 @@ class SupabaseStorageAdapter:
             else:
                 response = await self._client.post(
                     url,
-                    headers={key: value for key, value in headers.items() if key != "apikey"},
+                    headers=headers,
                     files={"file": (path.rsplit("/", 1)[-1], data or b"", content_type or "application/octet-stream")},
                 )
         except httpx.HTTPError as exc:
             raise APIError(error_code, f"The document could not be {operation_message}.", 502) from exc
+
+        if method == "delete" and response.status_code >= 300:
+            try:
+                payload = response.json()
+            except ValueError:
+                payload = {}
+            if payload.get("code") == "NoSuchKey" or str(payload.get("statusCode")) == "404":
+                return None
 
         if response.status_code >= 300:
             raise APIError(error_code, f"The document could not be {operation_message}.", 502)

@@ -385,6 +385,24 @@ def test_document_delete_storage_failure_preserves_database(document_api_client)
         assert session.get(Document, UUID(document_id)) is not None
 
 
+def test_document_delete_database_failure_does_not_remove_storage(document_api_client, monkeypatch):
+    client, _, storage, session_factory = document_api_client
+    document_id = _upload_text(client).json()["id"]
+
+    def fail_delete(_session, _document):
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(Session, "delete", fail_delete)
+    response = client.delete(f"/api/v1/documents/{document_id}")
+
+    assert response.status_code == 500
+    assert response.json()["error"]["code"] == "DOCUMENT_DELETE_FAILED"
+    assert storage.deleted == []
+    monkeypatch.undo()
+    with session_factory() as session:
+        assert session.get(Document, UUID(document_id)) is not None
+
+
 def test_document_management_requires_owner(document_api_client):
     client, _, _, _ = document_api_client
     document_id = _upload_text(client).json()["id"]
