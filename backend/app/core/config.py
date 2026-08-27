@@ -56,6 +56,11 @@ class Settings(BaseSettings):
         ge=0,
         validation_alias="EMBEDDING_RETRY_MAX_BACKOFF_SECONDS",
     )
+    answer_model: str = Field(default="gemini-2.5-flash", validation_alias="ANSWER_MODEL")
+    answer_api_timeout_seconds: float = Field(default=30.0, gt=0, validation_alias="ANSWER_API_TIMEOUT_SECONDS")
+    answer_max_retries: int = Field(default=2, ge=0, le=5, validation_alias="ANSWER_MAX_RETRIES")
+    answer_retry_backoff_seconds: float = Field(default=0.5, ge=0, validation_alias="ANSWER_RETRY_BACKOFF_SECONDS")
+    answer_retry_max_backoff_seconds: float = Field(default=4.0, ge=0, validation_alias="ANSWER_RETRY_MAX_BACKOFF_SECONDS")
     seed_demo_user_id: str | None = Field(default=None, validation_alias="SEED_DEMO_USER_ID")
 
     model_config = SettingsConfigDict(

@@ -14,6 +14,7 @@ class SemanticSearchHit:
     chunk_id: UUID
     document_id: UUID
     document_title: str
+    original_filename: str
     section_title: str | None
     page_number: int | None
     content: str
@@ -42,6 +43,7 @@ class SemanticSearchRepository:
                 chunk_id=row.chunk_id,
                 document_id=row.document_id,
                 document_title=row.document_title,
+                original_filename=row.original_filename,
                 section_title=row.section_title,
                 page_number=row.page_number,
                 content=row.content,
@@ -63,6 +65,7 @@ class SemanticSearchRepository:
                 DocumentChunk.id.label("chunk_id"),
                 Document.id.label("document_id"),
                 Document.title.label("document_title"),
+                Document.original_filename,
                 DocumentChunk.section_title,
                 DocumentChunk.page_number,
                 DocumentChunk.content,

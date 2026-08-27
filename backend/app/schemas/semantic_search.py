@@ -34,3 +34,18 @@ class SemanticSearchResponse(BaseModel):
     retrieval_latency_ms: float
     embedding_model: str
     evidence_status: Literal["found", "no_evidence"]
+
+
+class GroundedAnswerCitation(BaseModel):
+    chunk_id: UUID
+    document_title: str
+    original_filename: str
+    section_title: str | None
+    page_number: int | None
+    similarity_score: float = Field(ge=-1, le=1)
+
+
+class GroundedAnswerResponse(BaseModel):
+    answer: str
+    citations: list[GroundedAnswerCitation]
+    retrieved_chunks: int
