@@ -32,6 +32,8 @@ def test_storage_adapter_supports_upload_download_and_delete_with_opaque_key(sto
 
     for call in (client.post.call_args, client.get.call_args, client.delete.call_args):
         assert call.kwargs["headers"] == {"apikey": "sb_secret_test"}
+        assert "/storage/v1/object/private-documents/" in call.args[0]
+        assert "/storage/v1/object/public/" not in call.args[0]
 
 
 def test_storage_provider_errors_are_safe(storage_settings):

@@ -1,15 +1,20 @@
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlsplit
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
+MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024
 
 
 class Settings(BaseSettings):
     environment: str = "development"
-    frontend_url: str = Field(default="http://localhost:3000", validation_alias="FRONTEND_URL")
+    cors_origins: str = Field(
+        default="http://localhost:3000",
+        validation_alias="CORS_ORIGINS",
+    )
     database_url: str | None = Field(default=None, validation_alias="DATABASE_URL")
     migration_database_url: str | None = Field(
         default=None, validation_alias="MIGRATION_DATABASE_URL"
@@ -26,7 +31,9 @@ class Settings(BaseSettings):
         validation_alias="SUPABASE_STORAGE_BUCKET",
     )
     max_document_size_bytes: int = Field(
-        default=5_242_880,
+        default=MAX_UPLOAD_SIZE_BYTES,
+        gt=0,
+        le=MAX_UPLOAD_SIZE_BYTES,
         validation_alias="MAX_DOCUMENT_SIZE_BYTES",
     )
     gemini_api_key: SecretStr | None = Field(
@@ -70,9 +77,28 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    @field_validator("cors_origins")
+    @classmethod
+    def validate_cors_origins(cls, value: str) -> str:
+        origins = [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()]
+        if not origins:
+            raise ValueError("CORS_ORIGINS must contain at least one origin.")
+        for origin in origins:
+            parsed = urlsplit(origin)
+            if (
+                origin == "*"
+                or parsed.scheme not in {"http", "https"}
+                or not parsed.netloc
+                or parsed.path
+                or parsed.query
+                or parsed.fragment
+            ):
+                raise ValueError("CORS_ORIGINS must contain valid HTTP(S) origins without paths.")
+        return ",".join(origins)
+
     @property
-    def frontend_origins(self) -> list[str]:
-        return [origin.strip() for origin in self.frontend_url.split(",") if origin.strip()]
+    def allowed_cors_origins(self) -> list[str]:
+        return self.cors_origins.split(",")
 
 
 @lru_cache
